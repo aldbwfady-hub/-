@@ -1,18 +1,31 @@
 import { GoogleGenAI, Type, GenerateContentResponse, Modality } from "@google/genai";
 import { IQTestDifficulty, IQTestTopic } from './types';
 
-const API_KEY = process.env.API_KEY;
+// Lazy initialization of the GoogleGenAI instance to prevent app crash on missing API key.
+let ai: GoogleGenAI | null = null;
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
-}
+const getAiInstance = (): GoogleGenAI | null => {
+    if (ai) {
+        return ai;
+    }
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        console.error("API_KEY environment variable is not set. The application will not be able to connect to the Gemini API.");
+        return null;
+    }
+    ai = new GoogleGenAI({ apiKey });
+    return ai;
+};
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const API_UNAVAILABLE_MESSAGE = "عذراً، خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى التأكد من أن مفتاح الواجهة البرمجية (API Key) تم إعداده بشكل صحيح.";
+const API_UNAVAILABLE_JSON = `{"error": "${API_UNAVAILABLE_MESSAGE}"}`;
+
 
 export const getChatResponse = async (history: { role: string; parts: { text: string }[] }[], newMessageParts: any[]): Promise<string> => {
+  const ai = getAiInstance();
+  if (!ai) return API_UNAVAILABLE_MESSAGE;
+
   try {
-    // FIX: The `chats.create` method does not accept a `history` parameter and is intended for stateful conversations.
-    // Switched to `models.generateContent` which is the correct API for stateless chat requests with history.
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [...history, { role: 'user', parts: newMessageParts }],
@@ -29,6 +42,8 @@ export const getChatResponse = async (history: { role: string; parts: { text: st
 };
 
 export const summarizeText = async (text: string, size: 'short' | 'medium' | 'long', level: 'simple' | 'school' | 'detailed'): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return API_UNAVAILABLE_MESSAGE;
     try {
         const sizeMap = { 'short': 'قصير: زبدة الموضوع في بضع جمل للمراجعة السريعة.', 'medium': 'متوسط: فقرة أو فقرتين تشرح الأفكار الرئيسية.', 'long': 'مفصل: ملخص شامل من عدة فقرات مع الحفاظ على التفاصيل الهامة.' };
         const levelMap = { 
@@ -51,6 +66,8 @@ export const summarizeText = async (text: string, size: 'short' | 'medium' | 'lo
 };
 
 export const extractTextFromImage = async (base64Image: string, mimeType: string): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return API_UNAVAILABLE_MESSAGE;
     try {
         const imagePart = {
             inlineData: {
@@ -80,6 +97,9 @@ export const generateQuestions = async (
     difficulty: 'easy' | 'medium' | 'hard',
     numQuestions: number
 ): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return API_UNAVAILABLE_JSON;
+
     try {
         const typeDescription = {
             mcq: 'أسئلة اختيار من متعدد مع 4 خيارات لكل سؤال.',
@@ -147,6 +167,9 @@ export const generateQuestions = async (
 
 
 export const evaluateShortAnswer = async (userAnswer: string, idealAnswer: string): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return API_UNAVAILABLE_JSON;
+
     try {
         const prompt = `قارن بين "إجابة الطالب" و "الإجابة النموذجية". قم بتقييم إجابة الطالب من 10 وقدم ملاحظة قصيرة ومفيدة. كن مرناً في التقييم وركز على المعنى وليس على التطابق الحرفي.
         
@@ -181,6 +204,9 @@ export const generateMindMapData = async (
     text: string, 
     density: 'brief' | 'medium' | 'detailed'
 ): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return API_UNAVAILABLE_JSON;
+
     try {
         const densityMap = {
             brief: 'موجزة: ركز فقط على الأفكار الرئيسية والعناوين العريضة جدًا. لا تتعمق في التفاصيل.',
@@ -234,6 +260,9 @@ export const generateMindMapData = async (
 };
 
 export const generateExamples = async (text: string): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return API_UNAVAILABLE_MESSAGE;
+
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -247,6 +276,9 @@ export const generateExamples = async (text: string): Promise<string> => {
 };
 
 export const generateSpeech = async (text: string, voice: 'male' | 'female'): Promise<string | null> => {
+    const ai = getAiInstance();
+    if (!ai) return null;
+
     try {
         const voiceName = voice === 'male' ? 'Kore' : 'Puck'; // Kore for male, Puck for female
          const response = await ai.models.generateContent({
@@ -274,6 +306,9 @@ export const generateIQTest = async (
     difficulty: IQTestDifficulty,
     numQuestions: number
 ): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return API_UNAVAILABLE_JSON;
+
     const topicMap = {
         general: 'أسئلة ذكاء عامة ومتنوعة',
         logic: 'أسئلة تركيز على المنطق والاستنتاج وحل المشكلات',
@@ -339,6 +374,9 @@ export const getIQTestFeedback = async (
     topic: IQTestTopic,
     difficulty: IQTestDifficulty
 ): Promise<string> => {
+    const ai = getAiInstance();
+    if (!ai) return "أداء رائع! استمر في تحدي عقلك."; // Return a default positive message.
+
     const prompt = `
     طالب حصل على نتيجة ${score} من ${total} في اختبار ذكاء.
     - موضوع الاختبار كان: "${topic}".
