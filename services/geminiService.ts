@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, GenerateContentResponse, Modality } from "@google/genai";
-import { IQTestDifficulty, IQTestTopic } from './types';
+import { IQTestDifficulty, IQTestTopic } from '../types';
 
 // Lazy initialization of the GoogleGenAI instance to prevent app crash on missing API key.
 let ai: GoogleGenAI | null = null;
@@ -9,10 +9,10 @@ const getAiInstance = (): GoogleGenAI | null => {
     if (ai) {
         return ai;
     }
-    // Use VITE_ prefix for client-side environment variables
-    const apiKey = process.env.VITE_API_KEY;
+    // The API key is securely managed as an environment variable.
+    const apiKey = process.env.API_KEY;
     if (!apiKey) {
-        console.error("VITE_API_KEY environment variable is not set. The application will not be able to connect to the Gemini API.");
+        console.error("API_KEY environment variable is not set. The application will not be able to connect to the Gemini API.");
         return null;
     }
     ai = new GoogleGenAI({ apiKey });
