@@ -1,7 +1,7 @@
 export type Page = 'chat' | 'textbooks' | 'tools' | 'settings';
 export type Theme = 'light' | 'dark' | 'system';
 export type ColorTheme = 'gold' | 'blue' | 'green' | 'ruby' | 'violet';
-export type BackgroundTheme = 'bg-pro-1' | 'bg-pro-2' | 'bg-pro-3' | 'bg-pro-4' | 'bg-pro-5' | 'bg-pro-6' | 'bg-pro-7' | 'bg-pro-8' | 'bg-pro-9' | 'bg-pro-10';
+export type BackgroundTheme = 'bg-3d-1' | 'bg-3d-2' | 'bg-3d-3' | 'bg-3d-4' | 'bg-3d-5' | 'bg-3d-6' | 'bg-3d-7' | 'bg-3d-8' | 'bg-3d-9' | 'bg-3d-10';
 
 export interface ChatMessage {
   sender: 'user' | 'bot';

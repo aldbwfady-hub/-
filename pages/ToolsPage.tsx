@@ -1,9 +1,139 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Tool, GeneratedQuestion, QuestionType, QuestionDifficulty, ShortAnswerEvaluation, MindMapNode, IQTestTopic, IQTestDifficulty as IQD, IQQuestion } from '../types';
 import { summarizeText, generateQuestions, generateMindMapData, generateSpeech, extractTextFromImage, generateExamples, evaluateShortAnswer, generateIQTest, getIQTestFeedback } from '../services/geminiService';
-import { SummarizeIcon, QuestionerIcon, MindMapIcon, TtsIcon, BrainIcon, BackIcon, ArrowRightIcon, FileUploadIcon, CameraIcon, SparklesIcon, PencilIcon, ClipboardIcon, CheckmarkIcon, MaleIcon, FemaleIcon, PlayIcon, PauseIcon, DownloadIcon } from '../components/icons/Icons';
+import { SummarizeIcon, QuestionerIcon, MindMapIcon, TtsIcon, BrainIcon, BackIcon, ArrowRightIcon, FileUploadIcon, CameraIcon, SparklesIcon, PencilIcon, ClipboardIcon, CheckmarkIcon, MaleIcon, FemaleIcon, PlayIcon, PauseIcon, DownloadIcon, TrashIcon } from '../components/icons/Icons';
+
+// --- New Unified Content Input Component ---
+interface ContentInputProps {
+  text: string;
+  setText: React.Dispatch<React.SetStateAction<string>>;
+  isLoading: boolean;
+  placeholder?: string;
+  minHeightClass?: string;
+}
+
+const ContentInput: React.FC<ContentInputProps> = ({ text, setText, isLoading, placeholder, minHeightClass = 'min-h-[10rem]' }) => {
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const fileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve({ data: reader.result.split(',')[1], mimeType: file.type });
+        } else {
+          reject(new Error('Failed to read file.'));
+        }
+      };
+      reader.onerror = (error) => reject(error);
+    });
+
+  const removeImage = useCallback(() => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+  }, [imagePreview]);
+    
+  const handleImageFile = useCallback(async (file: File | null) => {
+    if (!file) return;
+    removeImage(); // Clear previous state
+    
+    setImagePreview(URL.createObjectURL(file));
+    setIsExtracting(true);
+    setError(null);
+
+    try {
+      const { data, mimeType } = await fileToBase64(file);
+      const extractedText = await extractTextFromImage(data, mimeType);
+      
+      if (extractedText.includes("خطأ") || extractedText.includes("لم يتم العثور")) {
+        setError(extractedText);
+        setTimeout(removeImage, 3000); // show error for 3s
+      } else {
+        setText(prevText => `${prevText}\n\n--- نص من صورة ---\n${extractedText}`.trim());
+        removeImage(); // remove preview on success as text is now in textarea
+      }
+    } catch (e) {
+      setError('فشل في معالجة الصورة.');
+      setTimeout(removeImage, 3000);
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [setText, removeImage]);
+
+  const clearAll = () => {
+    setText('');
+    removeImage();
+  }
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [text]);
+
+  return (
+    <div className="bg-surface p-4 rounded-2xl border border-weak focus-within:border-primary-400/50 focus-within:shadow-xl focus-within:shadow-primary-500/10 dark:focus-within:shadow-black/20 transition-all duration-300 space-y-3">
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={placeholder || "الصق النص هنا، أو استخدم الأزرار أدناه..."}
+          className={`w-full ${minHeightClass} p-3 bg-[rgba(var(--color-text-rgb),0.03)] border-2 border-dashed border-weak rounded-md focus:ring-0 focus:border-primary-500 transition resize-none`}
+          disabled={isLoading || isExtracting}
+        />
+        {(text || imagePreview) && !isLoading && !isExtracting && (
+          <button 
+            onClick={clearAll}
+            className="absolute top-2 left-2 w-7 h-7 flex items-center justify-center bg-surface rounded-full text-secondary hover:bg-red-500 hover:text-white transition-colors z-10"
+            aria-label="Clear input"
+          >
+            <TrashIcon />
+          </button>
+        )}
+      </div>
+
+      {imagePreview && (
+        <div className="relative w-full p-2 bg-surface-backdrop rounded-lg border border-weak animate-fade-in">
+          <div className="flex items-center gap-3">
+            <img src={imagePreview} alt="Preview" className="w-16 h-16 object-cover rounded"/>
+            <div className="flex-grow">
+              {isExtracting && (
+                <div className="flex items-center gap-2 text-sm text-secondary">
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <span>جاري استخراج النص...</span>
+                </div>
+              )}
+              {error && <p className="text-red-500 text-sm font-semibold">{error}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => fileInputRef.current?.click()} disabled={isLoading || isExtracting} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><FileUploadIcon/> <span>رفع صورة</span></button>
+        <button onClick={() => cameraInputRef.current?.click()} disabled={isLoading || isExtracting} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><CameraIcon/> <span>الكاميرا</span></button>
+      </div>
+      
+      <input type="file" accept="image/*" ref={fileInputRef} onChange={e => handleImageFile(e.target.files?.[0])} className="hidden" />
+      <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={e => handleImageFile(e.target.files?.[0])} className="hidden" />
+    </div>
+  );
+};
+
 
 // --- Individual Tool Components ---
 
@@ -14,7 +144,6 @@ type SummaryLevel = 'simple' | 'school' | 'detailed';
 const SummarizerTool: React.FC = () => {
     const [view, setView] = useState<'form' | 'result'>('form');
     const [text, setText] = useState('');
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState('');
@@ -26,54 +155,6 @@ const SummarizerTool: React.FC = () => {
     const [isGeneratingExtras, setIsGeneratingExtras] = useState<'questions' | 'examples' | null>(null);
     const [copySuccess, setCopySuccess] = useState(false);
     const [showAnswers, setShowAnswers] = useState(false);
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
-
-    const fileToBase64 = (file: File): Promise<{ data: string; mimeType: string }> =>
-        new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                if (typeof reader.result === 'string') {
-                    resolve({ data: reader.result.split(',')[1], mimeType: file.type });
-                } else {
-                    reject(new Error('Failed to read file.'));
-                }
-            };
-            reader.onerror = (error) => reject(error);
-        });
-
-    const resetForm = useCallback(() => {
-        setText('');
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setImagePreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        if (cameraInputRef.current) cameraInputRef.current.value = "";
-    }, [imagePreview]);
-
-    const handleImageInput = useCallback(async (file: File | null) => {
-        if (!file) return;
-        resetForm();
-        setImagePreview(URL.createObjectURL(file));
-        setIsLoading(true);
-        setLoadingMessage('جاري استخراج النص من الصورة...');
-        try {
-            const { data, mimeType } = await fileToBase64(file);
-            const extracted = await extractTextFromImage(data, mimeType);
-            if (extracted.includes("خطأ") || extracted.includes("لم يتم العثور")) {
-                setError(extracted);
-                resetForm();
-            } else {
-                setText(extracted);
-            }
-        } catch (e) {
-            setError('فشل في معالجة الصورة.');
-            resetForm();
-        } finally {
-            setIsLoading(false);
-        }
-    }, [resetForm]);
     
     const handleSummarize = async () => {
         if (!text.trim()) return;
@@ -119,7 +200,7 @@ const SummarizerTool: React.FC = () => {
     
     const handleRestart = () => {
         setView('form');
-        resetForm();
+        setText('');
     };
     
     const handleCopy = () => {
@@ -130,8 +211,8 @@ const SummarizerTool: React.FC = () => {
     };
 
     const StepCard: React.FC<{number: number, title: string, children: React.ReactNode}> = ({number, title, children}) => (
-        <div className="group relative bg-surface p-6 rounded-2xl border border-weak transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2">
-            <div className="absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600 shadow-lg shadow-primary-500/30">
+        <div className={`group relative bg-surface p-6 rounded-2xl border border-weak ${number !== 1 ? 'transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2' : ''}`}>
+            <div className={`absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full shadow-lg shadow-primary-500/30 ${number !== 1 ? 'transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600' : ''}`}>
                 {number}
             </div>
             <div className="pt-4">
@@ -226,26 +307,8 @@ const SummarizerTool: React.FC = () => {
     
     return (
         <div className="space-y-6">
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-            <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-            
             <StepCard number={1} title="أدخل المحتوى">
-                <textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="الصق النص هنا، أو استخدم الأزرار أدناه..."
-                    className="w-full h-40 p-3 bg-[rgba(var(--color-text-rgb),0.03)] border-2 border-weak rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                />
-                {imagePreview && (
-                    <div className="relative w-28 h-28 mt-2 p-1.5 bg-surface-backdrop rounded-lg border border-weak">
-                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded"/>
-                        <button onClick={resetForm} type="button" className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center bg-red-600 text-white rounded-full text-sm font-bold">✕</button>
-                    </div>
-                )}
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                     <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all"><FileUploadIcon/> <span>رفع صورة</span></button>
-                     <button onClick={() => cameraInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all"><CameraIcon/> <span>استخدام الكاميرا</span></button>
-                </div>
+                <ContentInput text={text} setText={setText} isLoading={isLoading} />
             </StepCard>
 
             <StepCard number={2} title="خصّص الملخص">
@@ -275,7 +338,6 @@ const QuestionGeneratorTool: React.FC = () => {
     // --- State Management ---
     const [view, setView] = useState<'form' | 'generating' | 'test' | 'results'>('form');
     const [text, setText] = useState('');
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState('');
@@ -291,13 +353,10 @@ const QuestionGeneratorTool: React.FC = () => {
     const [evaluations, setEvaluations] = useState<Record<number, ShortAnswerEvaluation>>({});
     const [isEvaluating, setIsEvaluating] = useState(false);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
-
     // --- Helper Components ---
     const StepCard: React.FC<{number: number, title: string, children: React.ReactNode, className?: string}> = ({number, title, children, className}) => (
-        <div className={`group relative bg-surface p-6 rounded-2xl border border-weak transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2 ${className}`}>
-            <div className="absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600 shadow-lg shadow-primary-500/30">
+        <div className={`group relative bg-surface p-6 rounded-2xl border border-weak ${number !== 1 ? 'transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2' : ''} ${className}`}>
+            <div className={`absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full shadow-lg shadow-primary-500/30 ${number !== 1 ? 'transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600' : ''}`}>
                 {number}
             </div>
             <div className="pt-4">
@@ -320,38 +379,6 @@ const QuestionGeneratorTool: React.FC = () => {
     );
     
     // --- Logic and Handlers ---
-    const resetForm = useCallback(() => {
-        setText('');
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setImagePreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        if (cameraInputRef.current) cameraInputRef.current.value = "";
-    }, [imagePreview]);
-
-    const handleImageInput = useCallback(async (file: File | null) => {
-        if (!file) return;
-        setImagePreview(URL.createObjectURL(file));
-        setIsLoading(true);
-        setLoadingMessage('جاري استخراج النص من الصورة...');
-        try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                const base64 = (reader.result as string).split(',')[1];
-                const extracted = await extractTextFromImage(base64, file.type);
-                if (extracted.includes("خطأ") || extracted.includes("لم يتم العثور")) {
-                    setError(extracted);
-                } else {
-                    setText(prev => `${prev}\n\n--- نص من صورة ---\n${extracted}`.trim());
-                }
-                setIsLoading(false);
-            };
-        } catch (e) {
-            setError('فشل في معالجة الصورة.');
-            setIsLoading(false);
-        }
-    }, []);
-
     const handleGenerate = async () => {
         if (!text.trim()) {
             setError('الرجاء إدخال نص لإنشاء الأسئلة.');
@@ -419,7 +446,7 @@ const QuestionGeneratorTool: React.FC = () => {
     const handleRestart = () => {
         setView('form');
         setTimeout(() => {
-            resetForm();
+            setText('');
             setError('');
             setGeneratedQuestions([]);
             setUserAnswers({});
@@ -561,26 +588,8 @@ const QuestionGeneratorTool: React.FC = () => {
 
     return (
          <div className="space-y-6">
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-            <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-
-             <StepCard number={1} title="أدخل المحتوى الدراسي">
-                <textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="الصق النص هنا، أو ارفق صورة..."
-                    className="w-full h-40 p-3 bg-[rgba(var(--color-text-rgb),0.03)] border-2 border-weak rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                />
-                 {imagePreview && (
-                    <div className="relative w-28 h-28 mt-2 p-1.5 bg-surface-backdrop rounded-lg border border-weak">
-                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded"/>
-                        <button onClick={() => {setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; if (cameraInputRef.current) cameraInputRef.current.value = "";}} type="button" className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center bg-red-600 text-white rounded-full text-sm font-bold">✕</button>
-                    </div>
-                )}
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                     <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><FileUploadIcon/> <span>رفع صورة</span></button>
-                     <button onClick={() => cameraInputRef.current?.click()} disabled={isLoading} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><CameraIcon/> <span>الكاميرا</span></button>
-                </div>
+            <StepCard number={1} title="أدخل المحتوى الدراسي">
+                <ContentInput text={text} setText={setText} isLoading={isLoading || isEvaluating} />
             </StepCard>
 
             <StepCard number={2} title="خصّص الاختبار">
@@ -617,7 +626,6 @@ const MindMapGeneratorTool: React.FC = () => {
     // --- State Management ---
     const [view, setView] = useState<'form' | 'loading' | 'result'>('form');
     const [text, setText] = useState('');
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState('');
@@ -631,14 +639,12 @@ const MindMapGeneratorTool: React.FC = () => {
     // Result State
     const [mindMapData, setMindMapData] = useState<MindMapNode | null>(null);
     
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     
     // --- Helper Components ---
     const StepCard: React.FC<{number: number, title: string, children: React.ReactNode, className?: string}> = ({number, title, children, className}) => (
-        <div className={`group relative bg-surface p-6 rounded-2xl border border-weak transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2 ${className}`}>
-            <div className="absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600 shadow-lg shadow-primary-500/30">
+        <div className={`group relative bg-surface p-6 rounded-2xl border border-weak ${number !== 1 ? 'transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2' : ''} ${className}`}>
+            <div className={`absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full shadow-lg shadow-primary-500/30 ${number !== 1 ? 'transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600' : ''}`}>
                 {number}
             </div>
             <div className="pt-4">
@@ -661,38 +667,6 @@ const MindMapGeneratorTool: React.FC = () => {
     );
 
     // --- Logic & Handlers ---
-    const resetForm = useCallback(() => {
-        setText('');
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setImagePreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        if (cameraInputRef.current) cameraInputRef.current.value = "";
-    }, [imagePreview]);
-
-    const handleImageInput = useCallback(async (file: File | null) => {
-        if (!file) return;
-        setImagePreview(URL.createObjectURL(file));
-        setIsLoading(true);
-        setLoadingMessage('جاري استخراج النص من الصورة...');
-        try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                const base64 = (reader.result as string).split(',')[1];
-                const extracted = await extractTextFromImage(base64, file.type);
-                if (extracted.includes("خطأ") || extracted.includes("لم يتم العثور")) {
-                    setError(extracted);
-                } else {
-                    setText(prev => `${prev}\n${extracted}`.trim());
-                }
-                setIsLoading(false);
-            };
-        } catch (e) {
-            setError('فشل في معالجة الصورة.');
-            setIsLoading(false);
-        }
-    }, []);
-
     const handleGenerate = async () => {
         if (!text.trim()) return;
         setError('');
@@ -732,7 +706,7 @@ const MindMapGeneratorTool: React.FC = () => {
     const handleRestart = () => {
         setView('form');
         setTimeout(() => {
-            resetForm();
+            setText('');
             setError('');
             setMindMapData(null);
         }, 300);
@@ -917,26 +891,8 @@ const MindMapGeneratorTool: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-            <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-
             <StepCard number={1} title="أدخل المحتوى">
-                <textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="الصق النص هنا، أو ارفق صورة..."
-                    className="w-full h-40 p-3 bg-[rgba(var(--color-text-rgb),0.03)] border-2 border-weak rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
-                />
-                 {imagePreview && (
-                    <div className="relative w-28 h-28 mt-2 p-1.5 bg-surface-backdrop rounded-lg border border-weak">
-                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded"/>
-                        <button onClick={resetForm} type="button" className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center bg-red-600 text-white rounded-full text-sm font-bold">✕</button>
-                    </div>
-                )}
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                     <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><FileUploadIcon/> <span>رفع صورة</span></button>
-                     <button onClick={() => cameraInputRef.current?.click()} disabled={isLoading} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><CameraIcon/> <span>الكاميرا</span></button>
-                </div>
+                <ContentInput text={text} setText={setText} isLoading={isLoading} />
             </StepCard>
 
             <StepCard number={2} title="خصّص الخريطة">
@@ -1182,20 +1138,16 @@ const TextToSpeechTool: React.FC = () => {
     // --- State Management ---
     const [view, setView] = useState<'form' | 'loading' | 'result'>('form');
     const [text, setText] = useState('');
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState('');
     const [voice, setVoice] = useState<'male' | 'female'>('female');
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const cameraInputRef = useRef<HTMLInputElement>(null);
-
     // --- Helper Functions ---
     const StepCard: React.FC<{ number: number, title: string, children: React.ReactNode }> = ({ number, title, children }) => (
-        <div className="group relative bg-surface p-6 rounded-2xl border border-weak transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2">
-            <div className="absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600 shadow-lg shadow-primary-500/30">
+        <div className={`group relative bg-surface p-6 rounded-2xl border border-weak ${number !== 1 ? 'transition-all duration-300 hover:border-primary-400/50 hover:shadow-xl hover:shadow-primary-500/10 dark:hover:shadow-black/20 hover:-translate-y-2' : ''}`}>
+            <div className={`absolute -top-6 right-6 w-12 h-12 flex items-center justify-center bg-primary-500 text-white font-bold text-xl rounded-full shadow-lg shadow-primary-500/30 ${number !== 1 ? 'transition-all duration-300 ease-out group-hover:scale-110 group-hover:rotate-6 group-hover:bg-primary-600' : ''}`}>
                 {number}
             </div>
             <div className="pt-4">
@@ -1208,38 +1160,6 @@ const TextToSpeechTool: React.FC = () => {
     );
     
     // --- Logic & Handlers ---
-    const resetForm = useCallback(() => {
-        setText('');
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setImagePreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        if (cameraInputRef.current) cameraInputRef.current.value = "";
-    }, [imagePreview]);
-
-    const handleImageInput = useCallback(async (file: File | null) => {
-        if (!file) return;
-        setImagePreview(URL.createObjectURL(file));
-        setIsLoading(true);
-        setLoadingMessage('جاري استخراج النص من الصورة...');
-        try {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                const base64 = (reader.result as string).split(',')[1];
-                const extracted = await extractTextFromImage(base64, file.type);
-                if (extracted.includes("خطأ") || extracted.includes("لم يتم العثور")) {
-                    setError(extracted);
-                } else {
-                    setText(prev => `${prev}\n${extracted}`.trim());
-                }
-                setIsLoading(false);
-            };
-        } catch (e) {
-            setError('فشل في معالجة الصورة.');
-            setIsLoading(false);
-        }
-    }, []);
-
     const handleGenerate = async () => {
         if (!text.trim()) return;
         setView('loading');
@@ -1299,7 +1219,7 @@ const TextToSpeechTool: React.FC = () => {
     const handleRestart = () => {
       setView('form');
       setAudioBlob(null);
-      resetForm();
+      setText('');
     };
 
     // --- Sub-Components ---
@@ -1408,26 +1328,14 @@ const TextToSpeechTool: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-            <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={e => handleImageInput(e.target.files?.[0])} className="hidden" />
-
             <StepCard number={1} title="أدخل المحتوى">
-                <textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="اكتب أو الصق النص هنا..."
-                    className="w-full h-32 p-3 bg-[rgba(var(--color-text-rgb),0.03)] border-2 border-weak rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
+                 <ContentInput 
+                    text={text} 
+                    setText={setText} 
+                    isLoading={isLoading} 
+                    placeholder="اكتب أو الصق النص هنا..." 
+                    minHeightClass="min-h-[8rem]"
                 />
-                {imagePreview && (
-                    <div className="relative w-28 h-28 mt-2 p-1.5 bg-surface-backdrop rounded-lg border border-weak">
-                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover rounded"/>
-                        <button onClick={() => {setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; if (cameraInputRef.current) cameraInputRef.current.value = "";}} type="button" className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center bg-red-600 text-white rounded-full text-sm font-bold">✕</button>
-                    </div>
-                )}
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                     <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><FileUploadIcon/> <span>رفع صورة</span></button>
-                     <button onClick={() => cameraInputRef.current?.click()} disabled={isLoading} className="flex items-center justify-center gap-2 bg-[rgba(var(--color-text-rgb),0.05)] py-3 font-bold rounded-lg hover:bg-[rgba(var(--color-text-rgb),0.1)] transition-all disabled:opacity-50"><CameraIcon/> <span>الكاميرا</span></button>
-                </div>
             </StepCard>
 
             <StepCard number={2} title="اختر الصوت">
@@ -1454,20 +1362,20 @@ const TextToSpeechTool: React.FC = () => {
 
 // --- Main ToolsPage Component ---
 
+const tools = [
+    { id: 'summarizer' as Tool, title: 'اداة التلخيص', description: 'لخص، اختبر فهمك، واحصل على أمثلة.', icon: <SummarizeIcon />, component: SummarizerTool, bgClassName: 'tool-card-1', textClassName: 'text-tool-1', iconBgClassName: 'bg-tool-1-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="summarizer-anim" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="8" strokeLinecap="round"><rect x="30" y="50" width="140" height="1" /><rect x="30" y="80" width="140" height="1" /><rect x="30" y="110" width="140" height="1" /><rect x="30" y="140" width="90" height="1" /></svg> },
+    { id: 'questioner' as Tool, title: 'منشئ الاسئلة', description: 'حوّل أي مادة دراسية إلى اختبار تفاعلي.', icon: <QuestionerIcon />, component: QuestionGeneratorTool, bgClassName: 'tool-card-2', textClassName: 'text-tool-2', iconBgClassName: 'bg-tool-2-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="questioner-anim" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"><path d="M 70 120 C 70 90, 130 90, 130 120 C 130 150, 100 150, 100 180 V 200" /><circle cx="100" cy="230" r="8" fill="rgba(255,255,255,0.3)" stroke="none" /></svg> },
+    { id: 'mindmap' as Tool, title: 'الخرائط الذهنية', description: 'نظّم الأفكار في خرائط مرئية واضحة.', icon: <MindMapIcon />, component: MindMapGeneratorTool, bgClassName: 'tool-card-3', textClassName: 'text-tool-3', iconBgClassName: 'bg-tool-3-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="mindmap-anim" fill="rgba(255,255,255,0.6)" stroke="rgba(255,255,255,0.6)" strokeWidth="4" strokeLinecap="round"><circle cx="100" cy="150" r="12" style={{transformOrigin: 'center'}} /><line x1="100" y1="150" x2="40" y2="80" /><line x1="100" y1="150" x2="160" y2="100" /><line x1="100" y1="150" x2="50" y2="220" /><line x1="100" y1="150" x2="150" y2="230" /></svg> },
+    { id: 'iqtest' as Tool, title: 'اختبار الذكاء', description: 'اختبارات ذكاء متجددة من الذكاء الاصطناعي.', icon: <BrainIcon />, component: IqTestTool, bgClassName: 'tool-card-4', textClassName: 'text-tool-4', iconBgClassName: 'bg-tool-4-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="iq-anim" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="3"><circle cx="100" cy="150" r="20" /><circle cx="100" cy="150" r="20" /><circle cx="100" cy="150" r="20" /></svg> },
+    { id: 'tts' as Tool, title: 'القارئ الصوتي', description: 'استمع إلى النصوص والمقالات بدلاً من قراءتها.', icon: <TtsIcon />, component: TextToSpeechTool, bgClassName: 'tool-card-5', textClassName: 'text-tool-5', iconBgClassName: 'bg-tool-5-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="tts-anim" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="4" strokeLinecap="round"><path d="M 60 120 A 40 40 0 0 1 60 180" /><path d="M 60 100 A 60 60 0 0 1 60 200" /><path d="M 60 80 A 80 80 0 0 1 60 220" /></svg> },
+];
+
 const ToolsPage: React.FC = () => {
     const [expandedToolId, setExpandedToolId] = useState<Tool | null>(null);
     const [activeToolIndex, setActiveToolIndex] = useState(0);
     const [cardStyles, setCardStyles] = useState<React.CSSProperties[]>([]);
     const scrollRef = useRef<HTMLDivElement>(null);
     const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-    const tools = [
-        { id: 'summarizer' as Tool, title: 'اداة التلخيص', description: 'لخص، اختبر فهمك، واحصل على أمثلة.', icon: <SummarizeIcon />, component: <SummarizerTool />, bgClassName: 'tool-card-1', textClassName: 'text-tool-1', iconBgClassName: 'bg-tool-1-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="summarizer-anim" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="8" strokeLinecap="round"><rect x="30" y="50" width="140" height="1" /><rect x="30" y="80" width="140" height="1" /><rect x="30" y="110" width="140" height="1" /><rect x="30" y="140" width="90" height="1" /></svg> },
-        { id: 'questioner' as Tool, title: 'منشئ الاسئلة', description: 'حوّل أي مادة دراسية إلى اختبار تفاعلي.', icon: <QuestionerIcon />, component: <QuestionGeneratorTool />, bgClassName: 'tool-card-2', textClassName: 'text-tool-2', iconBgClassName: 'bg-tool-2-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="questioner-anim" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round"><path d="M 70 120 C 70 90, 130 90, 130 120 C 130 150, 100 150, 100 180 V 200" /><circle cx="100" cy="230" r="8" fill="rgba(255,255,255,0.3)" stroke="none" /></svg> },
-        { id: 'mindmap' as Tool, title: 'الخرائط الذهنية', description: 'نظّم الأفكار في خرائط مرئية واضحة.', icon: <MindMapIcon />, component: <MindMapGeneratorTool />, bgClassName: 'tool-card-3', textClassName: 'text-tool-3', iconBgClassName: 'bg-tool-3-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="mindmap-anim" fill="rgba(255,255,255,0.6)" stroke="rgba(255,255,255,0.6)" strokeWidth="4" strokeLinecap="round"><circle cx="100" cy="150" r="12" style={{transformOrigin: 'center'}} /><line x1="100" y1="150" x2="40" y2="80" /><line x1="100" y1="150" x2="160" y2="100" /><line x1="100" y1="150" x2="50" y2="220" /><line x1="100" y1="150" x2="150" y2="230" /></svg> },
-        { id: 'iqtest' as Tool, title: 'اختبار الذكاء', description: 'اختبارات ذكاء متجددة من الذكاء الاصطناعي.', icon: <BrainIcon />, component: <IqTestTool />, bgClassName: 'tool-card-4', textClassName: 'text-tool-4', iconBgClassName: 'bg-tool-4-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="iq-anim" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="3"><circle cx="100" cy="150" r="20" /><circle cx="100" cy="150" r="20" /><circle cx="100" cy="150" r="20" /></svg> },
-        { id: 'tts' as Tool, title: 'القارئ الصوتي', description: 'استمع إلى النصوص والمقالات بدلاً من قراءتها.', icon: <TtsIcon />, component: <TextToSpeechTool />, bgClassName: 'tool-card-5', textClassName: 'text-tool-5', iconBgClassName: 'bg-tool-5-light', animation: <svg width="100%" height="100%" viewBox="0 0 200 300" className="tts-anim" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="4" strokeLinecap="round"><path d="M 60 120 A 40 40 0 0 1 60 180" /><path d="M 60 100 A 60 60 0 0 1 60 200" /><path d="M 60 80 A 80 80 0 0 1 60 220" /></svg> },
-    ];
     
     const handleCardMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const group = e.currentTarget;
@@ -1560,6 +1468,7 @@ const ToolsPage: React.FC = () => {
     const expandedTool = tools.find(t => t.id === expandedToolId);
 
     if (expandedTool) {
+        const ExpandedComponent = expandedTool.component;
         return (
             <div className="h-[calc(100vh-5rem)] animate-fade-in-up">
                 <div className="h-full overflow-y-auto scrollbar-hide p-4">
@@ -1576,7 +1485,7 @@ const ToolsPage: React.FC = () => {
                             <div className="w-7 h-7">{expandedTool.icon}</div>
                         </div>
                     </div>
-                    {expandedTool.component}
+                    <ExpandedComponent />
                 </div>
             </div>
         );

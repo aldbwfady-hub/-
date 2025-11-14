@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, GenerateContentResponse, Modality } from "@google/genai";
 import { IQTestDifficulty, IQTestTopic } from './types';
 
@@ -8,9 +9,10 @@ const getAiInstance = (): GoogleGenAI | null => {
     if (ai) {
         return ai;
     }
-    const apiKey = process.env.API_KEY;
+    // Use VITE_ prefix for client-side environment variables
+    const apiKey = process.env.VITE_API_KEY;
     if (!apiKey) {
-        console.error("API_KEY environment variable is not set. The application will not be able to connect to the Gemini API.");
+        console.error("VITE_API_KEY environment variable is not set. The application will not be able to connect to the Gemini API.");
         return null;
     }
     ai = new GoogleGenAI({ apiKey });

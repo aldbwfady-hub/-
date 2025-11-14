@@ -111,83 +111,181 @@
         background-image: linear-gradient(135deg, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.1) 0%, transparent 50%);
       }
 
-      /* --- NEW Modern Background Themes --- */
-      :root {
-        --bg-pro-light-opacity: 0.03;
-        --bg-pro-dark-opacity: 0.04;
-        --bg-pro-opacity: var(--bg-pro-light-opacity);
+      /* --- NEW 3D Background Themes --- */
+      @keyframes move-blobs {
+        0% { background-position: 0% 50%, 50% 100%, 100% 50%; }
+        50% { background-position: 100% 50%, 0% 0%, 50% 0%; }
+        100% { background-position: 0% 50%, 50% 100%, 100% 50%; }
       }
-      .dark {
-        --bg-pro-opacity: var(--bg-pro-dark-opacity);
+      @keyframes rotate-hue {
+        to { filter: hue-rotate(360deg); }
       }
-      .bg-pro-1 {
+      .bg-3d-1 {
         background-image:
-          linear-gradient(rgba(var(--color-text-rgb), var(--bg-pro-opacity)) 1px, transparent 1px),
-          linear-gradient(to right, rgba(var(--color-text-rgb), var(--bg-pro-opacity)) 1px, transparent 1px);
-        background-size: 3rem 3rem;
+          radial-gradient(circle at center, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.25) 0%, transparent 40%),
+          radial-gradient(circle at center, hsla(calc(var(--primary-h) + 120), var(--primary-s), var(--primary-l), 0.2) 0%, transparent 35%),
+          radial-gradient(circle at center, hsla(calc(var(--primary-h) + 240), var(--primary-s), var(--primary-l), 0.2) 0%, transparent 45%);
+        background-size: 80vmin 80vmin, 90vmin 90vmin, 70vmin 70vmin;
+        background-repeat: no-repeat;
+        animation: move-blobs 25s ease-in-out infinite, rotate-hue 40s linear infinite;
       }
-      .bg-pro-2 {
-        background-image: radial-gradient(rgba(var(--color-text-rgb), calc(var(--bg-pro-opacity) + 0.01)) 1px, transparent 1px);
-        background-size: 2rem 2rem;
+
+      @keyframes move-grid {
+        from { background-position: 0 0; }
+        to { background-position: 0 100vh; }
       }
-      .bg-pro-3 {
-        background-color: rgb(var(--color-bg-rgb));
-        --topography-color: rgba(var(--color-text-rgb), var(--bg-pro-opacity));
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.15' stroke='%239C92AC' stroke-opacity='0.2'%3E%3Cpath opacity='.5' d='M96 95h4v1h-4v-1M4 95h4v1H4v-1M96 5h4v1h-4v-1M4 5h4v1H4v-1'/%3E%3Cpath d='M0 95h2v1H0v-1M100 95h-2v1h2v-1M0 5h2v1H0v-1M100 5h-2v1h2v-1'/%3E%3Cpath opacity='.5' d='M95 0v2h1V0h-1M95 100v-2h1v2h-1M5 0v2h1V0H5M5 100v-2h1v2H5'/%3E%3Cpath d='M95-1v2h1v-2h-1M95 101v-2h1v2h-1M5-1v2h1v-2H5M5 101v-2h1v2H5'/%3E%3C/g%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='var(--topography-color)'%3E%3Cpath d='M94.5 94.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zm-85 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zm85-85a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zm-85 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z'/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      body.bg-3d-2::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-image:
+          linear-gradient(hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.2) 1px, transparent 1px),
+          linear-gradient(to right, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.2) 1px, transparent 1px);
+        background-size: 4rem 4rem;
+        transform: perspective(500px) rotateX(60deg) scale(2);
+        animation: move-grid 20s linear infinite;
+        opacity: 0.5;
       }
-      .bg-pro-4 {
+      .dark body.bg-3d-2::before {
+        opacity: 0.8;
+      }
+      
+      @keyframes animated-gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .bg-3d-3 {
+        background: linear-gradient(-45deg, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.2), hsla(calc(var(--primary-h) + 60), var(--primary-s), var(--primary-l), 0.2), hsla(calc(var(--primary-h) + 120), var(--primary-s), var(--primary-l), 0.2));
+        background-size: 400% 400%;
+        animation: animated-gradient 15s ease infinite;
+      }
+
+      @keyframes stars {
+        from { transform: translateY(0px); }
+        to { transform: translateY(-2000px); }
+      }
+      body.bg-3d-4::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-image: 
+          radial-gradient(1px 1px at 20px 30px, rgba(var(--color-text-rgb), 0.7), transparent),
+          radial-gradient(1px 1px at 40px 70px, rgba(var(--color-text-rgb), 0.7), transparent),
+          radial-gradient(1px 1px at 80px 120px, rgba(var(--color-text-rgb), 0.7), transparent),
+          radial-gradient(1.5px 1.5px at 150px 80px, rgba(var(--color-text-rgb), 0.7), transparent),
+          radial-gradient(1px 1px at 90px 40px, rgba(var(--color-text-rgb), 0.7), transparent),
+          radial-gradient(1px 1px at 130px 200px, rgba(var(--color-text-rgb), 0.7), transparent),
+          radial-gradient(1.5px 1.5px at 160px 140px, rgba(var(--color-text-rgb), 0.7), transparent);
+        background-repeat: repeat;
+        background-size: 200px 200px;
+        animation: stars 50s linear infinite;
+        opacity: 0.5;
+      }
+      .dark body.bg-3d-4::before { opacity: 0.8; }
+      
+      @keyframes tunnel-zoom {
+        0% { background-size: 0% 0%, 0% 0%; }
+        100% { background-size: 150% 150%, 100% 100%; }
+      }
+      .bg-3d-5 {
+        background-color: hsl(var(--primary-h), 10%, 5%);
+        background-image:
+          radial-gradient(hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.3) 15%, transparent 16%),
+          radial-gradient(hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.2) 15%, transparent 16%);
+        background-position: center;
+        background-repeat: no-repeat;
+        animation: tunnel-zoom 4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+      }
+      
+      @keyframes light-rays {
+        0% { transform: rotate(0deg); opacity: 0.1; }
+        50% { opacity: 0.2; }
+        100% { transform: rotate(360deg); opacity: 0.1; }
+      }
+      body.bg-3d-6::before {
+        content: '';
+        position: fixed;
+        inset: -50%;
+        z-index: -1;
+        background: conic-gradient(
+          from 90deg at 50% 50%,
+          transparent 0deg,
+          hsla(var(--primary-h), var(--primary-s), var(--primary-l), 1) 15deg,
+          transparent 30deg
+        );
+        animation: light-rays 20s linear infinite;
+      }
+
+      @keyframes grain {
+        0%, 100% { transform: translate(0, 0) }
+        10% { transform: translate(-5%, -10%) }
+        20% { transform: translate(-15%, 5%) }
+        30% { transform: translate(7%, -25%) }
+        40% { transform: translate(-5%, 25%) }
+        50% { transform: translate(-15%, 10%) }
+        60% { transform: translate(15%, 0%) }
+        70% { transform: translate(0%, 15%) }
+        80% { transform: translate(3%, 35%) }
+        90% { transform: translate(-10%, 10%) }
+      }
+      body.bg-3d-7::before {
+        content: '';
+        position: fixed; inset: -100%; z-index: -1;
+        background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj4NCiAgPGZpbHRlciBpZD0ibm9pc2UiPg0KICAgIDxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjg1IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+DQogICAgPGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPg0KICA8L2ZpbHRlcj4NCiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjAuMTUiLz4NCjwvc3ZnPg==');
+        animation: grain 8s steps(10) infinite;
+        opacity: 0.5;
+      }
+      .dark body.bg-3d-7::before { opacity: 0.8; }
+      .bg-3d-7 {
         background-image:
           radial-gradient(at 0% 0%, hsla(var(--primary-h),var(--primary-s),var(--primary-l),0.1) 0px, transparent 50%),
           radial-gradient(at 100% 100%, hsla(var(--primary-h),var(--primary-s),var(--primary-l),0.1) 0px, transparent 50%);
       }
-      .bg-pro-5 {
-        --iso-color: rgba(var(--color-text-rgb), var(--bg-pro-opacity));
+
+      .bg-3d-8 {
+        --iso-color: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15);
+        background-color: hsl(var(--primary-h), var(--primary-s), calc(var(--primary-l) - 20%));
+        background-image: 
+          linear-gradient(30deg, transparent 49.5%, var(--iso-color) 50%, transparent 50.5%),
+          linear-gradient(-30deg, transparent 49.5%, var(--iso-color) 50%, transparent 50.5%),
+          linear-gradient(90deg, transparent 49.5%, var(--iso-color) 50%, transparent 50.5%);
+        background-size: 80px 140px;
+      }
+      .dark .bg-3d-8 { --iso-color: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.25); }
+
+      @keyframes cosmic-glow {
+        0% { background-position: 0% 80%, 90% 10%, 20% 90%; }
+        50% { background-position: 50% 20%, 10% 90%, 80% 10%; }
+        100% { background-position: 0% 80%, 90% 10%, 20% 90%; }
+      }
+      .bg-3d-9 {
+        background-color: #0c0a1D;
         background-image:
-          linear-gradient(30deg, var(--iso-color) 1px, transparent 1px),
-          linear-gradient(-30deg, var(--iso-color) 1px, transparent 1px);
-        background-size: 30px 52px;
+          radial-gradient(ellipse at center, hsla(260, 80%, 60%, 0.3) 0%, transparent 50%),
+          radial-gradient(ellipse at center, hsla(190, 90%, 70%, 0.25) 0%, transparent 60%),
+          radial-gradient(ellipse at center, hsla(320, 85%, 65%, 0.2) 0%, transparent 55%);
+        background-size: 80vmin 80vmin, 120vmin 120vmin, 90vmin 90vmin;
+        background-repeat: no-repeat;
+        animation: cosmic-glow 30s ease-in-out infinite;
       }
-      .bg-pro-6 {
-        --wave-color: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.08);
-        background:
-          radial-gradient(
-            ellipse at top,
-            var(--wave-color),
-            transparent
-          ),
-          radial-gradient(
-            ellipse at bottom,
-            var(--wave-color),
-            transparent
-          );
+
+      @keyframes crystal-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
-      .bg-pro-7 {
-        --line-color: hsla(210, 50%, 50%, 0.1);
-        --dot-color: hsla(210, 50%, 70%, 0.3);
-        background-image:
-          linear-gradient(var(--line-color) 1px, transparent 1px),
-          linear-gradient(to right, var(--line-color) 1px, transparent 1px),
-          radial-gradient(var(--dot-color) 1px, transparent 1px);
-        background-size: 4rem 4rem, 4rem 4rem, 1rem 1rem;
-        background-position: -1px -1px, -1px -1px, 0 0;
-      }
-      .dark .bg-pro-7 {
-        --line-color: hsla(210, 50%, 50%, 0.2);
-        --dot-color: hsla(210, 50%, 70%, 0.4);
-      }
-      .bg-pro-8 {
-        --plus-color: rgba(var(--color-text-rgb), var(--bg-pro-opacity));
-        background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='var(--plus-color)' fill-opacity='1' fill-rule='evenodd'%3E%3Cpath d='M0 19h40v2H0zM19 0v40h2V0z'/%3E%3C/g%3E%3C/svg%3E");
-        background-size: 40px 40px;
-      }
-      .bg-pro-9 {
-        background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj4NCiAgPGZpbHRlciBpZD0ibm9pc2UiPg0KICAgIDxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjg1IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+DQogICAgPGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPg0KICA8L2ZpbHRlcj4NCiAgPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjAuMDciLz4NCjwvc3ZnPg==');
-        background-color: rgb(var(--color-bg-rgb));
-      }
-      .bg-pro-10 {
-        background-image:
-          radial-gradient(circle at 15% 25%, hsla(var(--primary-h),var(--primary-s),var(--primary-l),0.15) 0%, transparent 40%),
-          radial-gradient(circle at 80% 70%, hsla(calc(var(--primary-h) + 120),var(--primary-s),calc(var(--primary-l) + 10%),0.15) 0%, transparent 45%);
+      body.bg-3d-10::before {
+        content: '';
+        position: fixed; inset: -50%; z-index: -1;
+        background-image: 
+          linear-gradient(hsla(var(--primary-h), 100%, 80%, 0.1) 2px, transparent 2px),
+          linear-gradient(60deg, hsla(var(--primary-h), 100%, 80%, 0.1) 2px, transparent 2px),
+          linear-gradient(120deg, hsla(var(--primary-h), 100%, 80%, 0.1) 2px, transparent 2px);
+        background-size: 100px 100px;
+        animation: crystal-spin 60s linear infinite;
+        opacity: 0.5;
       }
 
       /* --- Tool Card Specific Colors --- */

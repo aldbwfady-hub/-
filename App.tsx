@@ -63,7 +63,7 @@ const App: React.FC = () => {
   const [activePage, setActivePage] = useState<Page>('chat');
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
   const [activeColor, setActiveColor] = useState<ColorTheme>(() => (localStorage.getItem('colorTheme') as ColorTheme) || 'gold');
-  const [activeBackground, setActiveBackground] = useState<BackgroundTheme>(() => (localStorage.getItem('backgroundTheme') as BackgroundTheme) || 'bg-pro-1');
+  const [activeBackground, setActiveBackground] = useState<BackgroundTheme>(() => (localStorage.getItem('backgroundTheme') as BackgroundTheme) || 'bg-3d-1');
   
   const [showMan, setShowMan] = useState(false);
   const [manKey, setManKey] = useState(0);
@@ -106,7 +106,7 @@ const App: React.FC = () => {
     });
     // Clean up old background classes
     Array.from(body.classList).forEach(className => {
-      if (className.startsWith('bg-theme-') || className.startsWith('bg-pro-')) {
+      if (className.startsWith('bg-pro-') || className.startsWith('bg-3d-')) {
         body.classList.remove(className);
       }
     });

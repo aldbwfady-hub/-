@@ -61,8 +61,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ theme, setTheme, activeCo
     ];
 
     const backgroundOptions: { id: BackgroundTheme }[] = [
-        { id: 'bg-pro-1' }, { id: 'bg-pro-2' }, { id: 'bg-pro-3' }, { id: 'bg-pro-4' }, { id: 'bg-pro-5' },
-        { id: 'bg-pro-6' }, { id: 'bg-pro-7' }, { id: 'bg-pro-8' }, { id: 'bg-pro-9' }, { id: 'bg-pro-10' },
+        { id: 'bg-3d-1' }, { id: 'bg-3d-2' }, { id: 'bg-3d-3' }, { id: 'bg-3d-4' }, { id: 'bg-3d-5' },
+        { id: 'bg-3d-6' }, { id: 'bg-3d-7' }, { id: 'bg-3d-8' }, { id: 'bg-3d-9' }, { id: 'bg-3d-10' },
     ];
     
     const SegmentedControl: React.FC<{options: {id: Theme, label: string}[], selected: Theme, onSelect: (value: Theme) => void}> = ({ options, selected, onSelect }) => (
@@ -109,7 +109,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ theme, setTheme, activeCo
                             key={bg.id}
                             onClick={() => setActiveBackground(bg.id)}
                             className={`w-12 h-12 bg-surface rounded-xl relative overflow-hidden transition-all duration-200 transform hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface ring-primary-400 shadow-inner ${bg.id}`}
-                            aria-label={`خلفية ${bg.id.split('-')[2]}`}
+                            aria-label={`خلفية ثلاثية الأبعاد ${bg.id.split('-')[2]}`}
                         >
                             {activeBackground === bg.id && (
                                 <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center text-white">
@@ -146,9 +146,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ theme, setTheme, activeCo
 
             <Section title="تابعنا على" icon={<ChatIcon/>}>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <a href="#" className="p-3 text-center rounded-lg font-bold text-white bg-[#1877F2] transition-transform hover:scale-105">Facebook</a>
-                    <a href="#" className="p-3 text-center rounded-lg font-bold text-white bg-[#25D366] transition-transform hover:scale-105">WhatsApp</a>
-                    <a href="#" className="p-3 flex items-center justify-center gap-2 text-center rounded-lg font-bold text-white bg-[radial-gradient(circle_at_30%_107%,#fdf497_0%,#fdf497_5%,#fd5949_45%,#d6249f_60%,#285AEB_90%)] transition-transform hover:scale-105">
+                    <a href="https://www.facebook.com/profile.php?id=61581813059961&mibextid=ZbWKwL" target="_blank" rel="noopener noreferrer" className="p-3 text-center rounded-lg font-bold text-white bg-[#1877F2] transition-transform hover:scale-105">Facebook</a>
+                    <a href="https://whatsapp.com/channel/0029Vb6npWr1iUxXrvmb5U00" target="_blank" rel="noopener noreferrer" className="p-3 text-center rounded-lg font-bold text-white bg-[#25D366] transition-transform hover:scale-105">WhatsApp</a>
+                    <a href="https://www.instagram.com/the.syrian.student?igsh=MWkyYzMydTc4ZnY0OQ==" target="_blank" rel="noopener noreferrer" className="p-3 flex items-center justify-center gap-2 text-center rounded-lg font-bold text-white bg-[radial-gradient(circle_at_30%_107%,#fdf497_0%,#fdf497_5%,#fd5949_45%,#d6249f_60%,#285AEB_90%)] transition-transform hover:scale-105">
                         <InstagramIcon />
                     </a>
                 </div>
@@ -334,19 +334,19 @@ const SuggestionsPage: React.FC<SuggestionsPageProps> = (props) => {
                 closestDistance = Math.abs(distance);
                 closestIndex = index;
             }
-
-            const normalizedDistance = distance / (offsetWidth / 2);
-
-            const rotation = normalizedDistance * -45; // Slightly more rotation
-            const translateZ = -Math.abs(normalizedDistance) * (card.offsetWidth * 0.6); // Increased depth
-            const translateY = Math.abs(normalizedDistance) * (card.offsetHeight * 0.2); // Increased arc
-            const scale = 1 - Math.abs(normalizedDistance) * 0.2; // Add scaling
-            const opacity = 1 - Math.abs(normalizedDistance) * 0.5; // Slightly more fade
             
+            // New "elegant and modern" coverflow animation
+            const normalizedDistance = distance / (offsetWidth / 2);
+            const rotation = normalizedDistance * -35; // Less rotation
+            const translateZ = -Math.abs(normalizedDistance) * (card.offsetWidth * 0.5); // Less depth
+            // translateY is removed for a flatter, sleeker look
+            const scale = 1 - Math.abs(normalizedDistance) * 0.15; // Less scaling
+            const opacity = 1 - Math.abs(normalizedDistance) * 0.4; // Less fade
+
             return {
-                transform: `perspective(1000px) translateY(${translateY}px) translateZ(${translateZ}px) rotateY(${rotation}deg) scale(${scale})`,
-                opacity: Math.max(0.2, opacity), // Allow more fading
-                zIndex: cardRefs.current.length - Math.abs(Math.round(normalizedDistance * 2)),
+                transform: `perspective(1000px) translateZ(${translateZ}px) rotateY(${rotation}deg) scale(${scale})`,
+                opacity: Math.max(0.4, opacity), // Higher minimum opacity for visibility
+                zIndex: cardRefs.current.length - Math.abs(Math.round(normalizedDistance)),
             };
         });
         
@@ -420,7 +420,7 @@ const SuggestionsPage: React.FC<SuggestionsPageProps> = (props) => {
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(section.id); } }}
-                            className={`group cursor-pointer flex-shrink-0 w-[85%] sm:w-2/3 md:w-1/2 max-w-xs aspect-[2/3] snap-center transition-transform duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--color-bg-rgb))] focus-visible:ring-primary-400 rounded-3xl`}
+                            className={`group cursor-pointer flex-shrink-0 w-[85%] sm:w-2/3 md:w-1/2 max-w-xs aspect-[2/3] snap-center focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--color-bg-rgb))] focus-visible:ring-primary-400 rounded-3xl`}
                         >
                             <div className="suggestion-card w-full h-full bg-card-professional rounded-3xl border border-weak p-6 flex flex-col text-right shadow-lg group-hover:shadow-2xl dark:shadow-black/20 transition-all duration-300 ease-in-out group-hover:-translate-y-2">
                                 <div className="absolute top-6 left-6 w-9 h-9 flex items-center justify-center bg-surface rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform -translate-x-4 group-hover:translate-x-0">
