@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type, GenerateContentResponse, Modality } from "@google/genai";
 import { IQTestDifficulty, IQTestTopic } from '../types';
+import { API_KEY } from '../config';
 
 // Lazy initialization of the GoogleGenAI instance to prevent app crash on missing API key.
 let ai: GoogleGenAI | null = null;
@@ -9,10 +10,11 @@ const getAiInstance = (): GoogleGenAI | null => {
     if (ai) {
         return ai;
     }
-    // The API key is securely managed as an environment variable.
-    const apiKey = process.env.API_KEY;
+    // The API key is securely managed as an environment variable via config.ts.
+    const apiKey = API_KEY;
     if (!apiKey) {
-        console.error("API_KEY environment variable is not set. The application will not be able to connect to the Gemini API.");
+        // The error is already logged in config.ts, but we can add another one here for context.
+        console.error("Gemini Service: API_KEY is missing. AI features will be disabled.");
         return null;
     }
     ai = new GoogleGenAI({ apiKey });
